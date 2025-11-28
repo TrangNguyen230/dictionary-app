@@ -1,89 +1,85 @@
-// app/api/terms/route.ts
+// app/api/projects/route.ts
+// app/api/projects/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const q = searchParams.get('q') || '';
-  const projectId = searchParams.get('projectId');
-
-  const where: any = {};
-
-  if (q) {
-    where.OR = [
-      { term: { contains: q, mode: 'insensitive' } },
-      { description: { contains: q, mode: 'insensitive' } },
-      { extraTags: { contains: q, mode: 'insensitive' } },
-    ];
-  }
-
-  if (projectId) {
-    where.projectId = Number(projectId);
-  }
-
-  const terms = await prisma.term.findMany({
-    where,
-    include: { project: true },
+export async function GET() {
+  const projects = await prisma.project.findMany({
     orderBy: { createdAt: 'desc' },
+    include: {
+      _count: {
+        select: { terms: true },
+      },
+    },
   });
 
-  return NextResponse.json(terms);
+  // map sang format đơn giản hơn cho frontend
+  const mapped = projects.map((p) => ({
+    id: p.id,
+    name: p.name,
+    description: p.description,
+    termCount: p._count.terms,
+  }));
+
+  return NextResponse.json(mapped);
 }
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
 
-  if (body.action === 'create-term') {
-    const { term, description, projectId, extraTags } = body;
+  if (body.action === 'create-project') {
+    const { name, description } = body;
 
-    if (!term || !description) {
+    if (!name) {
       return NextResponse.json(
-        { message: 'Thiếu trường bắt buộc' },
+        { message: 'Thiếu tên dự án' },
         { status: 400 },
       );
     }
 
-    const created = await prisma.term.create({
+    const created = await prisma.project.create({
       data: {
-        term,
-        description,
-        projectId: projectId ?? null,
-        extraTags: extraTags ?? null,
+        name,
+        description: description ?? null,
       },
     });
 
     return NextResponse.json(created, { status: 201 });
   }
 
-  if (body.action === 'update-term') {
-    const { id, term, description, projectId, extraTags } = body;
-    if (!id || !term || !description) {
+  if (body.action === 'update-project') {
+    const { id, name, description } = body;
+    if (!id || !name) {
       return NextResponse.json(
         { message: 'Thiếu dữ liệu cập nhật' },
         { status: 400 },
       );
     }
 
-    const updated = await prisma.term.update({
+    const updated = await prisma.project.update({
       where: { id },
       data: {
-        term,
-        description,
-        projectId: projectId ?? null,
-        extraTags: extraTags ?? null,
+        name,
+        description: description ?? null,
       },
     });
 
     return NextResponse.json(updated);
   }
 
-  if (body.action === 'delete-term') {
+  if (body.action === 'delete-project') {
     const { id } = body;
     if (!id) {
       return NextResponse.json({ message: 'Thiếu id' }, { status: 400 });
     }
 
-    await prisma.term.delete({
+    // bỏ liên kết projectId của các term thuộc dự án này
+    await prisma.term.updateMany({
+      where: { projectId: id },
+      data: { projectId: null },
+    });
+
+    await prisma.project.delete({
       where: { id },
     });
 

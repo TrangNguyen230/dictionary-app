@@ -6,20 +6,38 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const q = searchParams.get('q') || '';
   const projectId = searchParams.get('projectId');
+  const tag = searchParams.get('tag');
 
-  const where: any = {};
+  const and: any[] = [];
 
   if (q) {
-    where.OR = [
-      { term: { contains: q, mode: 'insensitive' } },
-      { description: { contains: q, mode: 'insensitive' } },
-      { extraTags: { contains: q, mode: 'insensitive' } },
-    ];
+    and.push({
+      OR: [
+        { term: { contains: q, mode: 'insensitive' } },
+        { description: { contains: q, mode: 'insensitive' } },
+        { extraTags: { contains: q, mode: 'insensitive' } },
+      ],
+    });
   }
 
   if (projectId) {
-    where.projectId = Number(projectId);
+    and.push({ projectId: Number(projectId) });
   }
+
+  if (tag) {
+    and.push({
+      OR: [
+        { extraTags: { contains: tag, mode: 'insensitive' } },
+        {
+          project: {
+            name: { contains: tag, mode: 'insensitive' },
+          },
+        },
+      ],
+    });
+  }
+
+  const where = and.length ? { AND: and } : {};
 
   const terms = await prisma.term.findMany({
     where,
