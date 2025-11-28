@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
     where.OR = [
       { term: { contains: q, mode: 'insensitive' } },
       { description: { contains: q, mode: 'insensitive' } },
+      { extraTags: { contains: q, mode: 'insensitive' } },
     ];
   }
 
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
 
   if (body.action === 'create-term') {
-    const { term, description, projectId } = body;
+    const { term, description, projectId, extraTags } = body;
 
     if (!term || !description) {
       return NextResponse.json(
@@ -47,10 +48,33 @@ export async function POST(req: NextRequest) {
         term,
         description,
         projectId: projectId ?? null,
+        extraTags: extraTags ?? null,
       },
     });
 
     return NextResponse.json(created, { status: 201 });
+  }
+
+  if (body.action === 'update-term') {
+    const { id, term, description, projectId, extraTags } = body;
+    if (!id || !term || !description) {
+      return NextResponse.json(
+        { message: 'Thiếu dữ liệu cập nhật' },
+        { status: 400 },
+      );
+    }
+
+    const updated = await prisma.term.update({
+      where: { id },
+      data: {
+        term,
+        description,
+        projectId: projectId ?? null,
+        extraTags: extraTags ?? null,
+      },
+    });
+
+    return NextResponse.json(updated);
   }
 
   if (body.action === 'delete-term') {

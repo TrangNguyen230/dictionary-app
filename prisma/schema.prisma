@@ -10,7 +10,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")  // giữ dòng này
+  url      = env("DATABASE_URL")
 }
 
 model Project {
@@ -28,6 +28,8 @@ model Term {
   createdAt   DateTime @default(now())
   project     Project? @relation(fields: [projectId], references: [id])
   projectId   Int?
+  extraTags   String?   // tags người dùng tự nhập, "tag1, tag2"
 }
+
 
 

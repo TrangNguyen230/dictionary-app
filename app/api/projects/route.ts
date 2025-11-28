@@ -1,50 +1,89 @@
-// app/api/projects/route.ts
+// app/api/terms/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export async function GET() {
-  const projects = await prisma.project.findMany({
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const q = searchParams.get('q') || '';
+  const projectId = searchParams.get('projectId');
+
+  const where: any = {};
+
+  if (q) {
+    where.OR = [
+      { term: { contains: q, mode: 'insensitive' } },
+      { description: { contains: q, mode: 'insensitive' } },
+      { extraTags: { contains: q, mode: 'insensitive' } },
+    ];
+  }
+
+  if (projectId) {
+    where.projectId = Number(projectId);
+  }
+
+  const terms = await prisma.term.findMany({
+    where,
+    include: { project: true },
     orderBy: { createdAt: 'desc' },
   });
-  return NextResponse.json(projects);
+
+  return NextResponse.json(terms);
 }
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
 
-  if (body.action === 'create-project') {
-    const { name, description } = body;
+  if (body.action === 'create-term') {
+    const { term, description, projectId, extraTags } = body;
 
-    if (!name) {
+    if (!term || !description) {
       return NextResponse.json(
-        { message: 'Thiếu tên dự án' },
+        { message: 'Thiếu trường bắt buộc' },
         { status: 400 },
       );
     }
 
-    const created = await prisma.project.create({
+    const created = await prisma.term.create({
       data: {
-        name,
-        description: description ?? null,
+        term,
+        description,
+        projectId: projectId ?? null,
+        extraTags: extraTags ?? null,
       },
     });
 
     return NextResponse.json(created, { status: 201 });
   }
 
-  if (body.action === 'delete-project') {
+  if (body.action === 'update-term') {
+    const { id, term, description, projectId, extraTags } = body;
+    if (!id || !term || !description) {
+      return NextResponse.json(
+        { message: 'Thiếu dữ liệu cập nhật' },
+        { status: 400 },
+      );
+    }
+
+    const updated = await prisma.term.update({
+      where: { id },
+      data: {
+        term,
+        description,
+        projectId: projectId ?? null,
+        extraTags: extraTags ?? null,
+      },
+    });
+
+    return NextResponse.json(updated);
+  }
+
+  if (body.action === 'delete-term') {
     const { id } = body;
     if (!id) {
       return NextResponse.json({ message: 'Thiếu id' }, { status: 400 });
     }
 
-    // Khi xóa project, set projectId của term về null
-    await prisma.term.updateMany({
-      where: { projectId: id },
-      data: { projectId: null },
-    });
-
-    await prisma.project.delete({
+    await prisma.term.delete({
       where: { id },
     });
 
