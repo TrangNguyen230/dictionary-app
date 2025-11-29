@@ -451,6 +451,9 @@ body.dark .icon-btn {
 .term-desc {
   font-size: 13px;
   color: var(--text-sub);
+  white-space: pre-line;          /* giữ xuống dòng */
+  overflow-wrap: break-word;      /* chống tràn ngang */
+  word-break: break-word;         /* chống trường hợp từ rất dài */
 }
 
 .term-meta {
@@ -606,6 +609,33 @@ body.dark .select-project {
   color: var(--text-main);
 }
 
+/* Detail */
+
+.term-detail {
+  margin-top: 16px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  background-color: var(--panel);
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06);
+}
+
+body.dark .term-detail {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.term-detail-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.term-desc-detail {
+  font-size: 13px;
+  color: var(--text-main);
+  white-space: pre-line; /* GIỮ XUỐNG DÒNG */
+  margin-bottom: 8px;
+}
 
 /* RESPONSIVE */
 

@@ -63,6 +63,9 @@ export default function HomePage() {
   const [projectName, setProjectName] = useState('');
   const [projectDesc, setProjectDesc] = useState('');
 
+  // expanded terms (for expand/collapse)
+  const [expandedIds, setExpandedIds] = useState<number[]>([]);
+
   // ---------- THEME ----------
 
   useEffect(() => {
@@ -204,14 +207,13 @@ export default function HomePage() {
         throw new Error('Error saving term');
       }
 
-      // reload lại list thuật ngữ nhưng KHÔNG đóng form
+      // reload list, giữ nguyên trang hiện tại
       await fetchTerms({ keepPage: true });
 
       if (editingTerm) {
-        // đang sửa: giữ nguyên dữ liệu hiện tại trên form
-        // (user bấm Hủy nếu muốn đóng)
+        // sửa: giữ nguyên dữ liệu trên form, chỉ cập nhật list ngoài
       } else {
-        // đang thêm mới: sau khi lưu thì clear form để nhập tiếp
+        // thêm mới: clear form để nhập tiếp
         setTermText('');
         setTermDesc('');
         setTermProjectId('');
@@ -237,6 +239,7 @@ export default function HomePage() {
       });
       if (!res.ok) throw new Error('Error deleting term');
       await fetchTerms({ keepPage: true });
+      setExpandedIds((prev) => prev.filter((pid) => pid !== id));
     } catch (e) {
       console.error(e);
       setError('Không xóa được thuật ngữ.');
@@ -364,6 +367,20 @@ export default function HomePage() {
   function handleChangeView(mode: ViewMode) {
     setViewMode(mode);
     setCurrentPage(1);
+  }
+
+  // ---------- DESCRIPTION TRUNCATE & TOGGLE ----------
+
+  function truncateDescription(desc: string, limit: number) {
+    if (!desc) return '';
+    if (desc.length <= limit) return desc;
+    return desc.slice(0, limit) + '…';
+  }
+
+  function toggleExpandTerm(id: number) {
+    setExpandedIds((prev) =>
+      prev.includes(id) ? prev.filter((pid) => pid !== id) : [...prev, id],
+    );
   }
 
   // ---------- RENDER ----------
@@ -605,28 +622,45 @@ export default function HomePage() {
                   .map((s) => s.trim())
                   .filter(Boolean) || [];
 
+              const isExpanded = expandedIds.includes(t.id);
+              const limit = viewMode === 'cards' ? 150 : 250;
+              const descToShow = isExpanded
+                ? t.description
+                : truncateDescription(t.description, limit);
+
               return (
-                <article key={t.id} className="term-item">
+                <article
+                  key={t.id}
+                  className="term-item"
+                  onClick={() => toggleExpandTerm(t.id)}
+                  style={{ cursor: 'pointer' }}
+                >
                   <div className="term-header">
                     <div className="term-name">{t.term}</div>
                     <div className="term-actions">
                       <button
                         className="icon-btn"
                         title="Sửa"
-                        onClick={() => openEditTermForm(t)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditTermForm(t);
+                        }}
                       >
                         <PencilSimple size={14} />
                       </button>
                       <button
                         className="icon-btn"
                         title="Xóa"
-                        onClick={() => handleDeleteTerm(t.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteTerm(t.id);
+                        }}
                       >
                         <Trash size={14} />
                       </button>
                     </div>
                   </div>
-                  <p className="term-desc">{t.description}</p>
+                  <p className="term-desc">{descToShow}</p>
                   <div className="term-meta">
                     <div className="tags">
                       {extraTags.map((tag) => (
@@ -732,15 +766,15 @@ export default function HomePage() {
             )}
             {projects.map((p) => (
               <div key={p.id} className="project-item">
-               <div>
-                <div className="term-name">{p.name}</div>
-                {p.description && (
-                 <div className="term-desc">{p.description}</div>
-                )}
-                <div className="term-project" style={{ marginTop: 4 }}>
-                 {(p.termCount ?? 0).toString()} thuật ngữ
+                <div>
+                  <div className="term-name">{p.name}</div>
+                  {p.description && (
+                    <div className="term-desc">{p.description}</div>
+                  )}
+                  <div className="term-project" style={{ marginTop: 4 }}>
+                    {(p.termCount ?? 0).toString()} thuật ngữ
+                  </div>
                 </div>
-               </div>
                 <div className="term-actions">
                   <button
                     className="icon-btn"
